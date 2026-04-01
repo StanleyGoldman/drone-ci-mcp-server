@@ -56,7 +56,7 @@ func main() {
 	mux.Handle("/", authMiddleware(cfg.AuthToken, mcpHandler))
 
 	if oauthEnabled {
-		registerOAuth(mux, cfg.OAuthClientID, cfg.OAuthClientSecret, cfg.AuthToken)
+		newOAuthServer(cfg.OAuthClientSecret, cfg.AuthToken).registerRoutes(mux)
 	}
 
 	addr := ":" + cfg.Port
@@ -135,6 +135,7 @@ func authMiddleware(token string, next http.Handler) http.Handler {
 	expected := "Bearer " + token
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != expected {
+			w.Header().Set("WWW-Authenticate", `Bearer error="unauthorized"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
