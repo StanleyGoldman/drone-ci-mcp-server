@@ -1,0 +1,25 @@
+# Local network deployment — no TLS, no reverse proxy.
+# Use this when Claude Desktop is on the same network as this server.
+#
+# Usage:
+#   cp .env.example .env   # fill in DRONE_SERVER and DRONE_TOKEN
+#   docker compose up -d
+
+services:
+  drone-mcp:
+    build: .
+    image: drone-ci-mcp:latest
+    environment:
+      DRONE_SERVER: ${DRONE_SERVER}
+      DRONE_TOKEN: ${DRONE_TOKEN}
+      MCP_PORT: ${MCP_PORT:-8080}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+    ports:
+      - "${MCP_PORT:-8080}:${MCP_PORT:-8080}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${MCP_PORT:-8080}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
