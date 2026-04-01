@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -89,10 +90,25 @@ func configFromEnv() config {
 	}
 	return config{
 		DroneServer: os.Getenv("DRONE_SERVER"),
-		DroneToken:  os.Getenv("DRONE_TOKEN"),
+		DroneToken:  envOrFile("DRONE_TOKEN"),
 		Port:        port,
-		AuthToken:   os.Getenv("MCP_AUTH_TOKEN"),
+		AuthToken:   envOrFile("MCP_AUTH_TOKEN"),
 	}
+}
+
+// envOrFile reads a config value from the named env var, falling back to the
+// file path in <key>_FILE (Docker secrets convention).
+func envOrFile(key string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	if path := os.Getenv(key + "_FILE"); path != "" {
+		b, err := os.ReadFile(path)
+		if err == nil {
+			return strings.TrimSpace(string(b))
+		}
+	}
+	return ""
 }
 
 // authMiddleware enforces Bearer token authentication when a token is configured.
