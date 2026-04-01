@@ -1,0 +1,8 @@
+# Caddy reverse proxy config for drone-ci-mcp-server.
+# MCP_HOSTNAME is injected from the environment (set in .env).
+#
+# Caddy automatically obtains and renews a TLS certificate from Let's Encrypt.
+
+{$MCP_HOSTNAME} {
+    reverse_proxy drone-mcp:8080
+}

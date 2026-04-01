@@ -3,7 +3,7 @@ IMAGE      := drone-ci-mcp
 GO         := go
 GOFLAGS    ?=
 
-.PHONY: build test test-integration test-all lint run docker-build docker-up docker-down help
+.PHONY: build test test-integration test-all coverage lint run docker-build docker-up docker-down help
 
 ## build: compile the binary
 build:
@@ -19,6 +19,18 @@ test-integration:
 
 ## test-all: run all tests
 test-all: test-integration
+
+## coverage: run unit tests and open an HTML coverage report
+coverage:
+	$(GO) test $(GOFLAGS) -coverprofile=coverage.out -covermode=atomic ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report written to coverage.html"
+
+## coverage-integration: run all tests (including integration) with coverage
+coverage-integration:
+	$(GO) test $(GOFLAGS) -tags=integration -coverprofile=coverage.out -covermode=atomic ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report written to coverage.html"
 
 ## lint: run golangci-lint (must be installed)
 lint:
