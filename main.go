@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stanleygoldman/drone-ci-mcp-server/internal/drone"
@@ -51,7 +55,21 @@ func main() {
 		"auth_enabled", cfg.AuthToken != "",
 	)
 
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	httpServer := &http.Server{Addr: addr, Handler: mux}
+
+	go func() {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		logger.Info("shutting down")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "shutdown error: %v\n", err)
+		}
+	}()
+
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintf(os.Stderr, "server error: %v\n", err)
 		os.Exit(1)
 	}

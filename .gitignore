@@ -1,0 +1,9 @@
+# Build output
+drone-ci-mcp
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Local environment — contains secrets, never commit
+.env
