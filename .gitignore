@@ -7,3 +7,6 @@ coverage.html
 
 # Local environment — contains secrets, never commit
 .env
+
+# Docker secrets directory
+secrets/

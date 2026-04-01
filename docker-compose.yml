@@ -1,9 +1,14 @@
 # Local network deployment — no TLS, no reverse proxy.
 # Use this when Claude Desktop is on the same network as this server.
 #
-# Usage:
+# Plain env var usage:
 #   cp .env.example .env   # fill in DRONE_SERVER and DRONE_TOKEN
 #   docker compose up -d
+#
+# Docker secrets usage (recommended for production):
+#   echo "your-drone-token" > secrets/drone_token
+#   echo "your-mcp-token"   > secrets/mcp_auth_token   # optional
+#   docker compose --profile secrets up -d
 
 services:
   drone-mcp:
@@ -11,9 +16,11 @@ services:
     image: drone-ci-mcp:latest
     environment:
       DRONE_SERVER: ${DRONE_SERVER}
-      DRONE_TOKEN: ${DRONE_TOKEN}
+      DRONE_TOKEN: ${DRONE_TOKEN:-}
+      DRONE_TOKEN_FILE: ${DRONE_TOKEN_FILE:-}
       MCP_PORT: ${MCP_PORT:-8080}
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      MCP_AUTH_TOKEN_FILE: ${MCP_AUTH_TOKEN_FILE:-}
     ports:
       - "${MCP_PORT:-8080}:${MCP_PORT:-8080}"
     restart: unless-stopped
@@ -23,3 +30,32 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  # Alternative service using Docker secrets — use with --profile secrets
+  drone-mcp-secrets:
+    profiles: [secrets]
+    build: .
+    image: drone-ci-mcp:latest
+    environment:
+      DRONE_SERVER: ${DRONE_SERVER}
+      DRONE_TOKEN_FILE: /run/secrets/drone_token
+      MCP_PORT: ${MCP_PORT:-8080}
+      MCP_AUTH_TOKEN_FILE: /run/secrets/mcp_auth_token
+    secrets:
+      - drone_token
+      - mcp_auth_token
+    ports:
+      - "${MCP_PORT:-8080}:${MCP_PORT:-8080}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${MCP_PORT:-8080}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+secrets:
+  drone_token:
+    file: ./secrets/drone_token
+  mcp_auth_token:
+    file: ./secrets/mcp_auth_token
