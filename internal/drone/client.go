@@ -125,7 +125,7 @@ func checkStatus(resp *http.Response) error {
 }
 
 func decode[T any](resp *http.Response, v *T) error {
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if err := checkStatus(resp); err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (c *HTTPClient) CancelBuild(ctx context.Context, owner, name string, number
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return checkStatus(resp)
 }
 

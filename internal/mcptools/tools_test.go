@@ -71,7 +71,7 @@ func connect(t *testing.T, client drone.Client) *mcp.ClientSession {
 	if err != nil {
 		t.Fatalf("client.Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() { _ = session.Close() })
 	return session
 }
 

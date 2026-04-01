@@ -18,7 +18,9 @@ func newTestServer(mux *http.ServeMux) (*httptest.Server, *drone.HTTPClient) {
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func TestListRepos(t *testing.T) {

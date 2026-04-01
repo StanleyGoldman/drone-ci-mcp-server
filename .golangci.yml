@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - contextcheck
+    - noctx
+
+formatters:
+  disable-all: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
