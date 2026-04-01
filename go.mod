@@ -1,6 +1,6 @@
 module github.com/stanleygoldman/drone-ci-mcp-server
 
-go 1.24.7
+go 1.24
 
 require github.com/modelcontextprotocol/go-sdk v1.3.1
 
