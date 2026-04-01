@@ -16,9 +16,14 @@ services:
     image: drone-ci-mcp:latest
     environment:
       DRONE_SERVER: ${DRONE_SERVER}
-      DRONE_TOKEN: ${DRONE_TOKEN}
+      DRONE_TOKEN: ${DRONE_TOKEN:-}
+      DRONE_TOKEN_FILE: ${DRONE_TOKEN_FILE:-}
       MCP_PORT: 8080
-      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      MCP_AUTH_TOKEN_FILE: ${MCP_AUTH_TOKEN_FILE:-}
+      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:-}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:-}
+      OAUTH_CLIENT_SECRET_FILE: ${OAUTH_CLIENT_SECRET_FILE:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]

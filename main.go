@@ -28,6 +28,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	oauthEnabled := cfg.OAuthClientID != "" && cfg.OAuthClientSecret != ""
+	if oauthEnabled && cfg.AuthToken == "" {
+		fmt.Fprintln(os.Stderr, "error: MCP_AUTH_TOKEN is required when OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET are set")
+		os.Exit(1)
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	droneClient := drone.NewHTTPClient(cfg.DroneServer, cfg.DroneToken)
@@ -49,11 +55,16 @@ func main() {
 	})
 	mux.Handle("/", authMiddleware(cfg.AuthToken, mcpHandler))
 
+	if oauthEnabled {
+		registerOAuth(mux, cfg.OAuthClientID, cfg.OAuthClientSecret, cfg.AuthToken)
+	}
+
 	addr := ":" + cfg.Port
 	logger.Info("drone-ci MCP server starting",
 		"addr", addr,
 		"drone_server", cfg.DroneServer,
 		"auth_enabled", cfg.AuthToken != "",
+		"oauth_enabled", oauthEnabled,
 	)
 
 	httpServer := &http.Server{Addr: addr, Handler: mux}
@@ -77,10 +88,12 @@ func main() {
 }
 
 type config struct {
-	DroneServer string
-	DroneToken  string
-	Port        string
-	AuthToken   string
+	DroneServer       string
+	DroneToken        string
+	Port              string
+	AuthToken         string
+	OAuthClientID     string
+	OAuthClientSecret string
 }
 
 func configFromEnv() config {
@@ -89,10 +102,12 @@ func configFromEnv() config {
 		port = "8080"
 	}
 	return config{
-		DroneServer: os.Getenv("DRONE_SERVER"),
-		DroneToken:  envOrFile("DRONE_TOKEN"),
-		Port:        port,
-		AuthToken:   envOrFile("MCP_AUTH_TOKEN"),
+		DroneServer:       os.Getenv("DRONE_SERVER"),
+		DroneToken:        envOrFile("DRONE_TOKEN"),
+		Port:              port,
+		AuthToken:         envOrFile("MCP_AUTH_TOKEN"),
+		OAuthClientID:     os.Getenv("OAUTH_CLIENT_ID"),
+		OAuthClientSecret: envOrFile("OAUTH_CLIENT_SECRET"),
 	}
 }
 
