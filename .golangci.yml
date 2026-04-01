@@ -1,7 +1,7 @@
 version: "2"
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - govet
@@ -10,9 +10,6 @@ linters:
     - unused
     - contextcheck
     - noctx
-
-formatters:
-  disable-all: true
 
 issues:
   max-issues-per-linter: 0
