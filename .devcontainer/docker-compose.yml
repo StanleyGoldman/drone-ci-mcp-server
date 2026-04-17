@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sleep infinity
+    volumes:
+      - ..:/workspace:cached
+      - bashhistory:/commandhistory
+      - claude-code-config:/home/vscode/.claude
+
+volumes:
+  bashhistory:
+  claude-code-config:

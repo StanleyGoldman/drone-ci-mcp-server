@@ -1,8 +1,8 @@
 {
   "name": "Drone CI MCP Server",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "moby": true,
@@ -14,6 +14,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
+        "anthropic.claude-code",
         "golang.go",
         "ms-azuretools.vscode-docker",
         "EditorConfig.EditorConfig"
@@ -24,6 +25,9 @@
         "go.testFlags": ["-v"]
       }
     }
+  },
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   },
   "postCreateCommand": "go mod download && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest",
   "remoteUser": "vscode"
