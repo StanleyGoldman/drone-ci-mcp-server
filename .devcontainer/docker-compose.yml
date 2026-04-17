@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     command: sleep infinity
     volumes:
-      - ..:/workspace:cached
+      - .:/workspace:cached
       - bashhistory:/commandhistory
       - claude-code-config:/home/vscode/.claude
 
