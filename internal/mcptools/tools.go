@@ -118,6 +118,211 @@ func Register(server *mcp.Server, client drone.Client) {
 			}
 		}`),
 	}, h.restartBuild)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "promote_build",
+		Description: "Promote a build to a target environment (e.g. staging, production)",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "build", "target"],
+			"properties": {
+				"owner":  {"type": "string", "description": "Repository owner or namespace"},
+				"name":   {"type": "string", "description": "Repository name"},
+				"build":  {"type": "integer", "description": "Build number to promote"},
+				"target": {"type": "string", "description": "Target environment name (e.g. production, staging)"}
+			}
+		}`),
+	}, h.promoteBuild)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "rollback_build",
+		Description: "Rollback a build to a target environment",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "build", "target"],
+			"properties": {
+				"owner":  {"type": "string", "description": "Repository owner or namespace"},
+				"name":   {"type": "string", "description": "Repository name"},
+				"build":  {"type": "integer", "description": "Build number to roll back"},
+				"target": {"type": "string", "description": "Target environment name"}
+			}
+		}`),
+	}, h.rollbackBuild)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "approve_build",
+		Description: "Approve a blocked stage in a build",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "build", "stage"],
+			"properties": {
+				"owner": {"type": "string", "description": "Repository owner or namespace"},
+				"name":  {"type": "string", "description": "Repository name"},
+				"build": {"type": "integer", "description": "Build number"},
+				"stage": {"type": "integer", "description": "Stage number to approve"}
+			}
+		}`),
+	}, h.approveBuild)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "decline_build",
+		Description: "Decline a blocked stage in a build",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "build", "stage"],
+			"properties": {
+				"owner": {"type": "string", "description": "Repository owner or namespace"},
+				"name":  {"type": "string", "description": "Repository name"},
+				"build": {"type": "integer", "description": "Build number"},
+				"stage": {"type": "integer", "description": "Stage number to decline"}
+			}
+		}`),
+	}, h.declineBuild)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "list_secrets",
+		Description: "List all secrets for a repository",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name"],
+			"properties": {
+				"owner": {"type": "string", "description": "Repository owner or namespace"},
+				"name":  {"type": "string", "description": "Repository name"}
+			}
+		}`),
+	}, h.listSecrets)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "get_secret",
+		Description: "Get a secret by name for a repository",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "secret"],
+			"properties": {
+				"owner":  {"type": "string", "description": "Repository owner or namespace"},
+				"name":   {"type": "string", "description": "Repository name"},
+				"secret": {"type": "string", "description": "Secret name"}
+			}
+		}`),
+	}, h.getSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "create_secret",
+		Description: "Create a new secret for a repository",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "secret", "data"],
+			"properties": {
+				"owner":             {"type": "string", "description": "Repository owner or namespace"},
+				"name":              {"type": "string", "description": "Repository name"},
+				"secret":            {"type": "string", "description": "Secret name"},
+				"data":              {"type": "string", "description": "Secret value"},
+				"pull_request":      {"type": "boolean", "description": "Expose secret to pull request builds"},
+				"pull_request_push": {"type": "boolean", "description": "Expose secret to pull request push builds"}
+			}
+		}`),
+	}, h.createSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "update_secret",
+		Description: "Update an existing secret for a repository",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "secret", "data"],
+			"properties": {
+				"owner":             {"type": "string", "description": "Repository owner or namespace"},
+				"name":              {"type": "string", "description": "Repository name"},
+				"secret":            {"type": "string", "description": "Secret name"},
+				"data":              {"type": "string", "description": "New secret value"},
+				"pull_request":      {"type": "boolean", "description": "Expose secret to pull request builds"},
+				"pull_request_push": {"type": "boolean", "description": "Expose secret to pull request push builds"}
+			}
+		}`),
+	}, h.updateSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "delete_secret",
+		Description: "Delete a secret from a repository",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["owner", "name", "secret"],
+			"properties": {
+				"owner":  {"type": "string", "description": "Repository owner or namespace"},
+				"name":   {"type": "string", "description": "Repository name"},
+				"secret": {"type": "string", "description": "Secret name to delete"}
+			}
+		}`),
+	}, h.deleteSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "list_org_secrets",
+		Description: "List all secrets for an organization namespace",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["namespace"],
+			"properties": {
+				"namespace": {"type": "string", "description": "Organization namespace"}
+			}
+		}`),
+	}, h.listOrgSecrets)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "get_org_secret",
+		Description: "Get a secret by name for an organization namespace",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["namespace", "secret"],
+			"properties": {
+				"namespace": {"type": "string", "description": "Organization namespace"},
+				"secret":    {"type": "string", "description": "Secret name"}
+			}
+		}`),
+	}, h.getOrgSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "create_org_secret",
+		Description: "Create a new secret for an organization namespace",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["namespace", "secret", "data"],
+			"properties": {
+				"namespace":         {"type": "string", "description": "Organization namespace"},
+				"secret":            {"type": "string", "description": "Secret name"},
+				"data":              {"type": "string", "description": "Secret value"},
+				"pull_request":      {"type": "boolean", "description": "Expose secret to pull request builds"},
+				"pull_request_push": {"type": "boolean", "description": "Expose secret to pull request push builds"}
+			}
+		}`),
+	}, h.createOrgSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "update_org_secret",
+		Description: "Update an existing secret for an organization namespace",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["namespace", "secret", "data"],
+			"properties": {
+				"namespace":         {"type": "string", "description": "Organization namespace"},
+				"secret":            {"type": "string", "description": "Secret name"},
+				"data":              {"type": "string", "description": "New secret value"},
+				"pull_request":      {"type": "boolean", "description": "Expose secret to pull request builds"},
+				"pull_request_push": {"type": "boolean", "description": "Expose secret to pull request push builds"}
+			}
+		}`),
+	}, h.updateOrgSecret)
+
+	server.AddTool(&mcp.Tool{
+		Name:        "delete_org_secret",
+		Description: "Delete a secret from an organization namespace",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["namespace", "secret"],
+			"properties": {
+				"namespace": {"type": "string", "description": "Organization namespace"},
+				"secret":    {"type": "string", "description": "Secret name to delete"}
+			}
+		}`),
+	}, h.deleteOrgSecret)
 }
 
 type handler struct {
@@ -155,6 +360,16 @@ func (a args) optString(key string) string {
 	var s string
 	json.Unmarshal(v, &s) //nolint:errcheck
 	return s
+}
+
+func (a args) optBool(key string) bool {
+	v, ok := a[key]
+	if !ok {
+		return false
+	}
+	var b bool
+	json.Unmarshal(v, &b) //nolint:errcheck
+	return b
 }
 
 func (a args) integer(key string) (int, error) {
@@ -376,4 +591,382 @@ func (h *handler) restartBuild(ctx context.Context, req *mcp.CallToolRequest) (*
 		return errResult(err), nil
 	}
 	return textResult(build)
+}
+
+func (h *handler) promoteBuild(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	buildNum, err := a.integer("build")
+	if err != nil {
+		return errResult(err), nil
+	}
+	target, err := a.string("target")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	build, err := h.client.PromoteBuild(ctx, owner, name, buildNum, target)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(build)
+}
+
+func (h *handler) rollbackBuild(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	buildNum, err := a.integer("build")
+	if err != nil {
+		return errResult(err), nil
+	}
+	target, err := a.string("target")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	build, err := h.client.RollbackBuild(ctx, owner, name, buildNum, target)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(build)
+}
+
+func (h *handler) approveBuild(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	buildNum, err := a.integer("build")
+	if err != nil {
+		return errResult(err), nil
+	}
+	stageNum, err := a.integer("stage")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	build, err := h.client.ApproveBuild(ctx, owner, name, buildNum, stageNum)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(build)
+}
+
+func (h *handler) declineBuild(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	buildNum, err := a.integer("build")
+	if err != nil {
+		return errResult(err), nil
+	}
+	stageNum, err := a.integer("stage")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	build, err := h.client.DeclineBuild(ctx, owner, name, buildNum, stageNum)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(build)
+}
+
+func (h *handler) listSecrets(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	secrets, err := h.client.ListSecrets(ctx, owner, name)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(secrets)
+}
+
+func (h *handler) getSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secret, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	s, err := h.client.GetSecret(ctx, owner, name, secret)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(s)
+}
+
+func (h *handler) createSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+	data, err := a.string("data")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	s, err := h.client.CreateSecret(ctx, owner, name, drone.SecretInput{
+		Name:            secretName,
+		Data:            data,
+		PullRequest:     a.optBool("pull_request"),
+		PullRequestPush: a.optBool("pull_request_push"),
+	})
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(s)
+}
+
+func (h *handler) updateSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+	data, err := a.string("data")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	s, err := h.client.UpdateSecret(ctx, owner, name, secretName, drone.SecretInput{
+		Data:            data,
+		PullRequest:     a.optBool("pull_request"),
+		PullRequestPush: a.optBool("pull_request_push"),
+	})
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(s)
+}
+
+func (h *handler) deleteSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	owner, err := a.string("owner")
+	if err != nil {
+		return errResult(err), nil
+	}
+	name, err := a.string("name")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	if err := h.client.DeleteSecret(ctx, owner, name, secretName); err != nil {
+		return errResult(err), nil
+	}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{
+			Text: fmt.Sprintf("Secret %q deleted from %s/%s.", secretName, owner, name),
+		}},
+	}, nil
+}
+
+func (h *handler) listOrgSecrets(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	namespace, err := a.string("namespace")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	secrets, err := h.client.ListOrgSecrets(ctx, namespace)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(secrets)
+}
+
+func (h *handler) getOrgSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	namespace, err := a.string("namespace")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	s, err := h.client.GetOrgSecret(ctx, namespace, secretName)
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(s)
+}
+
+func (h *handler) createOrgSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	namespace, err := a.string("namespace")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+	data, err := a.string("data")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	s, err := h.client.CreateOrgSecret(ctx, namespace, drone.SecretInput{
+		Name:            secretName,
+		Data:            data,
+		PullRequest:     a.optBool("pull_request"),
+		PullRequestPush: a.optBool("pull_request_push"),
+	})
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(s)
+}
+
+func (h *handler) updateOrgSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	namespace, err := a.string("namespace")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+	data, err := a.string("data")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	s, err := h.client.UpdateOrgSecret(ctx, namespace, secretName, drone.SecretInput{
+		Data:            data,
+		PullRequest:     a.optBool("pull_request"),
+		PullRequestPush: a.optBool("pull_request_push"),
+	})
+	if err != nil {
+		return errResult(err), nil
+	}
+	return textResult(s)
+}
+
+func (h *handler) deleteOrgSecret(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	a, err := parseArgs(req.Params.Arguments)
+	if err != nil {
+		return errResult(err), nil
+	}
+	namespace, err := a.string("namespace")
+	if err != nil {
+		return errResult(err), nil
+	}
+	secretName, err := a.string("secret")
+	if err != nil {
+		return errResult(err), nil
+	}
+
+	if err := h.client.DeleteOrgSecret(ctx, namespace, secretName); err != nil {
+		return errResult(err), nil
+	}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{
+			Text: fmt.Sprintf("Secret %q deleted from namespace %q.", secretName, namespace),
+		}},
+	}, nil
 }
