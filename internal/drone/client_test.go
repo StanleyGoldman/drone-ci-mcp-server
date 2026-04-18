@@ -194,6 +194,269 @@ func TestRestartBuild(t *testing.T) {
 	}
 }
 
+func TestPromoteBuild(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/repos/acme/widget/builds/5/promote", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("target") != "production" {
+			http.Error(w, "bad target", http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, drone.Build{ID: 200, Number: 6, Status: "pending"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	build, err := client.PromoteBuild(context.Background(), "acme", "widget", 5, "production")
+	if err != nil {
+		t.Fatalf("PromoteBuild: %v", err)
+	}
+	if build.Number != 6 {
+		t.Errorf("want Number=6, got %d", build.Number)
+	}
+}
+
+func TestRollbackBuild(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/repos/acme/widget/builds/5/rollback", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("target") != "staging" {
+			http.Error(w, "bad target", http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, drone.Build{ID: 201, Number: 7, Status: "pending"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	build, err := client.RollbackBuild(context.Background(), "acme", "widget", 5, "staging")
+	if err != nil {
+		t.Fatalf("RollbackBuild: %v", err)
+	}
+	if build.Number != 7 {
+		t.Errorf("want Number=7, got %d", build.Number)
+	}
+}
+
+func TestApproveBuild(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/repos/acme/widget/builds/5/approve/2", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, drone.Build{ID: 5, Number: 5, Status: "running"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	build, err := client.ApproveBuild(context.Background(), "acme", "widget", 5, 2)
+	if err != nil {
+		t.Fatalf("ApproveBuild: %v", err)
+	}
+	if build.Status != "running" {
+		t.Errorf("want Status=running, got %q", build.Status)
+	}
+}
+
+func TestDeclineBuild(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/repos/acme/widget/builds/5/decline/2", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, drone.Build{ID: 5, Number: 5, Status: "declined"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	build, err := client.DeclineBuild(context.Background(), "acme", "widget", 5, 2)
+	if err != nil {
+		t.Fatalf("DeclineBuild: %v", err)
+	}
+	if build.Status != "declined" {
+		t.Errorf("want Status=declined, got %q", build.Status)
+	}
+}
+
+func TestListSecrets(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/repos/acme/widget/secrets", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, []drone.Secret{
+			{ID: 1, Name: "docker_password"},
+			{ID: 2, Name: "npm_token"},
+		})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	secrets, err := client.ListSecrets(context.Background(), "acme", "widget")
+	if err != nil {
+		t.Fatalf("ListSecrets: %v", err)
+	}
+	if len(secrets) != 2 {
+		t.Fatalf("want 2 secrets, got %d", len(secrets))
+	}
+	if secrets[0].Name != "docker_password" {
+		t.Errorf("want secrets[0].Name=docker_password, got %q", secrets[0].Name)
+	}
+}
+
+func TestGetSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/repos/acme/widget/secrets/docker_password", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, drone.Secret{ID: 1, Name: "docker_password"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	s, err := client.GetSecret(context.Background(), "acme", "widget", "docker_password")
+	if err != nil {
+		t.Fatalf("GetSecret: %v", err)
+	}
+	if s.Name != "docker_password" {
+		t.Errorf("want Name=docker_password, got %q", s.Name)
+	}
+}
+
+func TestCreateSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/repos/acme/widget/secrets", func(w http.ResponseWriter, r *http.Request) {
+		var input drone.SecretInput
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, drone.Secret{ID: 3, Name: input.Name, PullRequest: input.PullRequest})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	s, err := client.CreateSecret(context.Background(), "acme", "widget", drone.SecretInput{
+		Name:        "new_secret",
+		Data:        "s3cr3t",
+		PullRequest: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	if s.Name != "new_secret" {
+		t.Errorf("want Name=new_secret, got %q", s.Name)
+	}
+	if !s.PullRequest {
+		t.Error("want PullRequest=true")
+	}
+}
+
+func TestUpdateSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("PATCH /api/repos/acme/widget/secrets/docker_password", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, drone.Secret{ID: 1, Name: "docker_password"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	s, err := client.UpdateSecret(context.Background(), "acme", "widget", "docker_password", drone.SecretInput{Data: "newval"})
+	if err != nil {
+		t.Fatalf("UpdateSecret: %v", err)
+	}
+	if s.Name != "docker_password" {
+		t.Errorf("want Name=docker_password, got %q", s.Name)
+	}
+}
+
+func TestDeleteSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("DELETE /api/repos/acme/widget/secrets/docker_password", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	if err := client.DeleteSecret(context.Background(), "acme", "widget", "docker_password"); err != nil {
+		t.Fatalf("DeleteSecret: %v", err)
+	}
+}
+
+func TestListOrgSecrets(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/secrets/acme", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, []drone.Secret{
+			{ID: 10, Namespace: "acme", Name: "shared_key"},
+		})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	secrets, err := client.ListOrgSecrets(context.Background(), "acme")
+	if err != nil {
+		t.Fatalf("ListOrgSecrets: %v", err)
+	}
+	if len(secrets) != 1 || secrets[0].Name != "shared_key" {
+		t.Errorf("unexpected secrets: %+v", secrets)
+	}
+}
+
+func TestGetOrgSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/secrets/acme/shared_key", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, drone.Secret{ID: 10, Namespace: "acme", Name: "shared_key"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	s, err := client.GetOrgSecret(context.Background(), "acme", "shared_key")
+	if err != nil {
+		t.Fatalf("GetOrgSecret: %v", err)
+	}
+	if s.Name != "shared_key" {
+		t.Errorf("want Name=shared_key, got %q", s.Name)
+	}
+}
+
+func TestCreateOrgSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/secrets/acme", func(w http.ResponseWriter, r *http.Request) {
+		var input drone.SecretInput
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, drone.Secret{ID: 11, Namespace: "acme", Name: input.Name})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	s, err := client.CreateOrgSecret(context.Background(), "acme", drone.SecretInput{Name: "org_secret", Data: "val"})
+	if err != nil {
+		t.Fatalf("CreateOrgSecret: %v", err)
+	}
+	if s.Name != "org_secret" {
+		t.Errorf("want Name=org_secret, got %q", s.Name)
+	}
+}
+
+func TestUpdateOrgSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("PATCH /api/secrets/acme/shared_key", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, drone.Secret{ID: 10, Namespace: "acme", Name: "shared_key"})
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	s, err := client.UpdateOrgSecret(context.Background(), "acme", "shared_key", drone.SecretInput{Data: "newval"})
+	if err != nil {
+		t.Fatalf("UpdateOrgSecret: %v", err)
+	}
+	if s.Name != "shared_key" {
+		t.Errorf("want Name=shared_key, got %q", s.Name)
+	}
+}
+
+func TestDeleteOrgSecret(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("DELETE /api/secrets/acme/shared_key", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	srv, client := newTestServer(mux)
+	defer srv.Close()
+
+	if err := client.DeleteOrgSecret(context.Background(), "acme", "shared_key"); err != nil {
+		t.Fatalf("DeleteOrgSecret: %v", err)
+	}
+}
+
 func TestAPIError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/repos/acme/missing", func(w http.ResponseWriter, r *http.Request) {
